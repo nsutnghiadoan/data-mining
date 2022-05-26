@@ -133,12 +133,48 @@ public:
 		return id_cluster;
 	}
 };
+class KCluster{
+	
+private:
+	int id_kCluster;
+	int K;
+	vector<Cluster> clusters;
+	double sse;
 
+public:
+	KCluster(int K,int id_kCluster, vector<Cluster> &clusters, double sse)
+	{
+		this->K = K;
+		this->id_kCluster = id_kCluster;
+		for(int i = 0; i < K; i++)
+			this->clusters.push_back(clusters[i]);
+		this->sse = sse;
+	}
+	void addCluster(Cluster cluster)
+	{
+		clusters.push_back(cluster);
+	}
+	int getId(){
+		return id_kCluster;
+	}
+	double getSSE(){
+		return sse;
+	}
+	void setSSE(double sse){
+		this->sse = sse;
+	}
+	Cluster getCluster(int index)
+	{
+		return clusters[index];
+	}
+	
+};
 class KMeans
 {
 private:
 	int K; // number of clusters
 	int total_values, total_points, max_iterations;
+	double sse;
 	vector<Cluster> clusters;
 
 	// return ID of nearest center (uses euclidean distance)
@@ -146,7 +182,6 @@ private:
 	{
 		double sum = 0.0, min_dist;
 		int id_cluster_center = 0;
-
 		for(int i = 0; i < total_values; i++)
 		{
 			sum += pow(clusters[0].getCentralValue(i) -
@@ -156,25 +191,26 @@ private:
 		min_dist = sqrt(sum);
 
 		for(int i = 1; i < K; i++)
-		{
+		{	
 			double dist;
 			sum = 0.0;
-
+			
 			for(int j = 0; j < total_values; j++)
 			{
 				sum += pow(clusters[i].getCentralValue(j) -
 						   point.getValue(j), 2.0);
 			}
-
+			
 			dist = sqrt(sum);
-
+			
 			if(dist < min_dist)
 			{
 				min_dist = dist;
 				id_cluster_center = i;
 			}
+			
 		}
-
+		
 		return id_cluster_center;
 	}
 
@@ -200,7 +236,6 @@ public:
 			while(true)
 			{
 				int index_point = rand() % total_points;
-
 				if(find(prohibited_indexes.begin(), prohibited_indexes.end(),
 						index_point) == prohibited_indexes.end())
 				{
@@ -212,19 +247,20 @@ public:
 				}
 			}
 		}
-
-		int iter = 1;
-
+		
+		int iter = 0;
+		vector<KCluster> kClusters;
+		double minSSE = 1000000000000.0;
+		double minSSE1 = 1000000000000.0;
 		while(true)
 		{
+			KCluster kCluster(K,iter,clusters,0);
 			bool done = true;
-
 			// associates each point to the nearest center
 			for(int i = 0; i < total_points; i++)
 			{
 				int id_old_cluster = points[i].getCluster();
 				int id_nearest_center = getIDNearestCenter(points[i]);
-
 				if(id_old_cluster != id_nearest_center)
 				{
 					if(id_old_cluster != -1)
@@ -235,7 +271,6 @@ public:
 					done = false;
 				}
 			}
-
 			// recalculating the center of each cluster
 			for(int i = 0; i < K; i++)
 			{
@@ -243,7 +278,6 @@ public:
 				{
 					int total_points_cluster = clusters[i].getTotalPoints();
 					double sum = 0.0;
-
 					if(total_points_cluster > 0)
 					{
 						for(int p = 0; p < total_points_cluster; p++)
@@ -252,16 +286,80 @@ public:
 					}
 				}
 			}
-
+			/*// caculate sse
+			cout<<"Caculate SSE of iterator "<<iter<<endl;
+			double sum = 0.0;
+			for(int i = 0; i < K; i++)
+			{	
+				int total_points_cluster =  clusters[i].getTotalPoints();
+				for(int j = 0; j < total_points_cluster; j++)
+				{
+					for(int p = 0; p < total_values; p++){
+						double temp = 0.0;
+						temp = (clusters[i].getCentralValue(j) - points[j].getValue(j));
+						sum += temp*temp;
+					}	
+				}
+				
+			}
+			if(sum < minSSE){
+				minSSE1 = minSSE;
+				minSSE = sum;	
+			}
+			kCluster.setSSE(sum);
+			cout<<"SSE of "<<kCluster.getId()<<" = "<<kCluster.getSSE()<<endl;
+			cout<<"Print value of KCluster number "<< kCluster.getId()<<endl;
+			for(int i = 0 ; i < K ; i ++ ){
+				int total_points_cluster =  kCluster.getCluster(i).getTotalPoints();
+				cout << "Cluster " << kCluster.getCluster(i).getID() + 1 << endl;
+				for(int j = 0; j < total_points_cluster; j++)
+				{
+					cout << "Point " << kCluster.getCluster(i).getPoint(j).getID() + 1 << ": ";
+					for(int p = 0; p < total_values; p++)
+						cout << kCluster.getCluster(i).getPoint(j).getValue(p) << " ";
+	
+					string point_name = kCluster.getCluster(i).getPoint(j).getName();
+	
+					if(point_name != "")
+						cout << "- " << point_name;
+	
+					cout << endl;
+				}
+	
+				cout << "Cluster values: ";
+	
+				for(int j = 0; j < total_values; j++)
+					cout << kCluster.getCluster(i).getCentralValue(j) << " ";
+	
+				cout << "\n\n";
+			}*/
 			if(done == true || iter >= max_iterations)
 			{
+				KCluster kCluster(K,iter,clusters,0);
+				double sumFinal = 0.0;
+				for(int i = 0; i < K; i++)
+				{	
+					int total_points_cluster =  clusters[i].getTotalPoints();
+					cout<<"Total point of cluster "<<i<<" : "<<total_points_cluster<<endl;
+					for(int j = 0; j < total_points_cluster; j++)
+					{
+						for(int p = 0; p < total_values; p++){
+							double temp = 0.0;
+							cout<<"a : "<<clusters[i].getCentralValue(p);
+							cout<<" b : "<<clusters[i].getPoint(j).getValue(p)<<endl;
+							temp = (clusters[i].getCentralValue(p) - clusters[i].getPoint(j).getValue(p));
+							sumFinal += temp*temp;
+						}	
+					}
+					
+				}
+				cout<<"Caculate SSE Final: "<<sumFinal<<endl;
 				cout << "Break in iteration " << iter << "\n\n";
 				break;
+				
 			}
-
 			iter++;
 		}
-
 		// shows elements of clusters
 		for(int i = 0; i < K; i++)
 		{
