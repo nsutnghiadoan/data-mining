@@ -3,13 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include <algorithm>
-// viet ham tinh sse : Nam
-// viet lai ham find dong 202 : Nghia
-// xu ly ngoai le kmeans : Hoang Long
-// bat dau lam bao cao : Phung Long
-// doc ghi file, tim data : Viet
-//19035898615013 tech
+#include <fstream>
 using namespace std;
 class Point
 {
@@ -17,18 +11,14 @@ private:
 	int id_point, id_cluster;
 	vector<double> values;
 	int total_values;
-	string name;
 
 public:
-	Point(int id_point, vector<double> &values, string name = "")
+	Point(int id_point, vector<double> &values)
 	{
 		this->id_point = id_point;
 		total_values = values.size();
-
 		for(int i = 0; i < total_values; i++)
 			this->values.push_back(values[i]);
-
-		this->name = name;
 		id_cluster = -1;
 	}
 
@@ -62,10 +52,6 @@ public:
 		values.push_back(value);
 	}
 
-	string getName()
-	{
-		return name;
-	}
 };
 
 class Cluster
@@ -133,15 +119,50 @@ public:
 		return id_cluster;
 	}
 };
+class KCluster{
+	
+private:
+	int id_kCluster;
+	int K;
+	vector<Cluster> clusters;
+	double sse;
 
+public:
+	KCluster(int K,int id_kCluster, vector<Cluster> &clusters, double sse)
+	{
+		this->K = K;
+		this->id_kCluster = id_kCluster;
+		for(int i = 0; i < K; i++)
+			this->clusters.push_back(clusters[i]);
+		this->sse = sse;
+	}
+	void addCluster(Cluster cluster)
+	{
+		clusters.push_back(cluster);
+	}
+	int getId(){
+		return id_kCluster;
+	}
+	double getSSE(){
+		return sse;
+	}
+	void setSSE(double sse){
+		this->sse = sse;
+	}
+	Cluster getCluster(int index)
+	{
+		return clusters[index];
+	}
+	
+};
 class KMeans
 {
 private:
-	int K; // number of clusters
+	int K; // so luong cum
 	int total_values, total_points, max_iterations;
 	vector<Cluster> clusters;
 
-	// return ID of nearest center (uses euclidean distance)
+	// Tra ve ID cua cum gan voi diem dang xet nhat
 	int getIDNearestCenter(Point point)
 	{
 		double sum = 0.0, min_dist;
@@ -165,9 +186,7 @@ private:
 				sum += pow(clusters[i].getCentralValue(j) -
 						   point.getValue(j), 2.0);
 			}
-
 			dist = sqrt(sum);
-
 			if(dist < min_dist)
 			{
 				min_dist = dist;
@@ -186,7 +205,26 @@ public:
 		this->total_values = total_values;
 		this->max_iterations = max_iterations;
 	}
+	
+	bool findRandCenter(vector<int> a , int c){
+	 	bool isAppeared = false;
+		if(a.size() == 0){
+			a.push_back(c);
+		}
+		else{
+			for (int i = 0; i< a.size() ; i++){
+	 			if(a[i] == c){
+	 				isAppeared = true;
+	 				return true;
+				}
+				else{
+					isAppeared = false;
+				}
+			}
+			return false;
+		}
 
+	}
 	void run(vector<Point> & points)
 	{
 		if(K > total_points)
@@ -194,15 +232,13 @@ public:
 
 		vector<int> prohibited_indexes;
 
-		// choose K distinct values for the centers of the clusters
 		for(int i = 0; i < K; i++)
 		{
 			while(true)
 			{
+				// Lay ngau nhien ra 1 diem trong tat ca cac diem lam tam ban dau
 				int index_point = rand() % total_points;
-
-				if(find(prohibited_indexes.begin(), prohibited_indexes.end(),
-						index_point) == prohibited_indexes.end())
+				if(findRandCenter(prohibited_indexes, index_point)) // kiem tra xem diem do da duoc xet lam tam chua
 				{
 					prohibited_indexes.push_back(index_point);
 					points[index_point].setCluster(i);
@@ -214,12 +250,14 @@ public:
 		}
 
 		int iter = 1;
-
+		vector<KCluster> kClusters;
+		double minSSE = 1000000000000.0;
+		double minSSE1 = 1000000000000.0;	
 		while(true)
 		{
+			KCluster kCluster(K,iter,clusters,0);
 			bool done = true;
-
-			// associates each point to the nearest center
+			// Tim ra cum co tam gan voi diem do nhat
 			for(int i = 0; i < total_points; i++)
 			{
 				int id_old_cluster = points[i].getCluster();
@@ -236,7 +274,7 @@ public:
 				}
 			}
 
-			// recalculating the center of each cluster
+			// tinh lai tam cua moi cum
 			for(int i = 0; i < K; i++)
 			{
 				for(int j = 0; j < total_values; j++)
@@ -255,14 +293,14 @@ public:
 
 			if(done == true || iter >= max_iterations)
 			{
-				cout << "Break in iteration " << iter << "\n\n";
+				cout << "Break in iteration " << iter << " \n\n";
 				break;
 			}
 
 			iter++;
 		}
 
-		// shows elements of clusters
+		// in ra cac diem trong tung cum
 		for(int i = 0; i < K; i++)
 		{
 			int total_points_cluster =  clusters[i].getTotalPoints();
@@ -273,11 +311,6 @@ public:
 				cout << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
 				for(int p = 0; p < total_values; p++)
 					cout << clusters[i].getPoint(j).getValue(p) << " ";
-
-				string point_name = clusters[i].getPoint(j).getName();
-
-				if(point_name != "")
-					cout << "- " << point_name;
 
 				cout << endl;
 			}
@@ -296,39 +329,57 @@ int main(int argc, char *argv[])
 {
 	srand (time(0));
 
-	int total_points, total_values, K, max_iterations, has_name;
 
-	cin >> total_points >> total_values >> K >> max_iterations;
-
+	int  K, max_iterations, total_points,total_values;
+	cin>> max_iterations;
+	//	Mo file 
+    ifstream infile("sobar-72.csv");
+    if (!infile.is_open())
+    {
+        cout << "Error: Failed to open file." << endl;
+        return 1;
+    }
+    
+ 	// Lay du lieu tu file
+    int pointId = 1;
 	vector<Point> points;
-	string point_name;
-
-	for(int i = 0; i < total_points; i++)
-	{
+	string line;
+ 	while (getline(infile, line)) //Doc den cuoi file
+    {
+    	// xu ly lay gia tri tung dong trong file txt
 		vector<double> values;
-
-		for(int j = 0; j < total_values; j++)
-		{
-			double value;
-			cin >> value;
-			values.push_back(value);
-		}
-
-//		if(has_name)
-//		{
-//			cin >> point_name;
-//			Point p(i, values, point_name);
-//			points.push_back(p);
-//		}
-//		else
-//		{
-			Point p(i, values);
+        string tmp = "";
+        for (int i = 0; i < (int)line.length(); i++)
+        {
+            if ((48 <= int(line[i]) && int(line[i])  <= 57) || line[i] == '.' || line[i] == '+' || line[i] == '-' || line[i] == 'e')
+            {
+                tmp += line[i];
+            }
+            else if (tmp.length() > 0)
+            {
+            	double value= atof(tmp.c_str());
+				values.push_back(value);
+                tmp = "";
+            }
+        }
+        if (tmp.length() > 0)
+        {
+        	double value= atof(tmp.c_str());
+            values.push_back(value);
+            tmp = "";
+        } ;
+			total_values = values.size(); // lay so thuoc tinh co trong 1 dataset
+			Point p(pointId, values);
 			points.push_back(p);
-//		}
+			pointId++;
+			total_points+=1; // dem so dataset trong file truyen vao
+			
+    }
+	for(int i = 0; i < 10 ; i++){
+		for(int j = 1; j < 10; j++ ){
+			KMeans kmeans(j , total_points, total_values, max_iterations);	
+			kmeans.run(points);	
+		}
 	}
-
-	KMeans kmeans(K, total_points, total_values, max_iterations);
-	kmeans.run(points);
-
 	return 0;
 }
