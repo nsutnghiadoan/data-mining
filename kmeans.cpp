@@ -161,7 +161,7 @@ private:
 	int K; // so luong cum
 	int total_values, total_points, max_iterations;
 	vector<Cluster> clusters;
-
+	double sse;
 	// Tra ve ID cua cum gan voi diem dang xet nhat
 	int getIDNearestCenter(Point point)
 	{
@@ -227,18 +227,25 @@ public:
 	}
 	void run(vector<Point> & points)
 	{
-		if(K > total_points)
+	
+			if(K > total_points){
+			cout<< " enrorr K > so luong dataset input";
 			return;
-
+		}
+			
+		// mo file output
+		ofstream output;
+        output.open("output.txt", ios::out | ios::trunc); //ios::trunc neu da co file output tu dong ghi de
 		vector<int> prohibited_indexes;
 
+		// Chon ra K diem ngau nhien lam tam
 		for(int i = 0; i < K; i++)
 		{
 			while(true)
 			{
-				// Lay ngau nhien ra 1 diem trong tat ca cac diem lam tam ban dau
 				int index_point = rand() % total_points;
-				if(findRandCenter(prohibited_indexes, index_point)) // kiem tra xem diem do da duoc xet lam tam chua
+
+				if(!findRandCenter(prohibited_indexes, index_point)) // kiem tra xem diem do da duoc xet lam tam chua
 				{
 					prohibited_indexes.push_back(index_point);
 					points[index_point].setCluster(i);
@@ -249,15 +256,17 @@ public:
 			}
 		}
 
-		int iter = 1;
+		int iter = 0;
 		vector<KCluster> kClusters;
 		double minSSE = 1000000000000.0;
-		double minSSE1 = 1000000000000.0;	
+		double minSSE1 = 1000000000000.0;
+
 		while(true)
 		{
 			KCluster kCluster(K,iter,clusters,0);
 			bool done = true;
-			// Tim ra cum co tam gan voi diem do nhat
+
+			// tim cum gan nhat cho diem
 			for(int i = 0; i < total_points; i++)
 			{
 				int id_old_cluster = points[i].getCluster();
@@ -274,7 +283,7 @@ public:
 				}
 			}
 
-			// tinh lai tam cua moi cum
+			// tinh lai tam cho moi cum
 			for(int i = 0; i < K; i++)
 			{
 				for(int j = 0; j < total_values; j++)
@@ -290,61 +299,89 @@ public:
 					}
 				}
 			}
-
+		
 			if(done == true || iter >= max_iterations)
 			{
-				cout << "Break in iteration " << iter << " \n\n";
+				//xu ly doc file
+            	output << "Break in iteration " << iter << endl;
+				cout << "Break in iteration " << iter << "\n\n";
+				KCluster kCluster(K,iter,clusters,0);
+				double sumFinal = 0.0;
+				for(int i = 0; i < K; i++)
+				{	
+					int total_points_cluster =  clusters[i].getTotalPoints();
+					cout<<"Total point of cluster "<<i<<" : "<<total_points_cluster<<endl;
+					for(int j = 0; j < total_points_cluster; j++)
+					{
+						for(int p = 0; p < total_values; p++){
+							double temp = 0.0;
+							temp = (clusters[i].getCentralValue(p) - clusters[i].getPoint(j).getValue(p));
+							sumFinal += temp*temp;
+						}	
+					}
+					
+				}
+				cout<<"Caculate SSE Final: "<<sumFinal<<endl;
 				break;
 			}
 
 			iter++;
 		}
 
-		// in ra cac diem trong tung cum
+		// hien thi ra cac diem trong moi cum
 		for(int i = 0; i < K; i++)
 		{
 			int total_points_cluster =  clusters[i].getTotalPoints();
 
 			cout << "Cluster " << clusters[i].getID() + 1 << endl;
+			output << "Cluster " << clusters[i].getID() + 1 << endl; //xu ly doc file
 			for(int j = 0; j < total_points_cluster; j++)
 			{
 				cout << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
-				for(int p = 0; p < total_values; p++)
+				output << "Point " << clusters[i].getPoint(j).getID() + 1 << ": ";
+				for(int p = 0; p < total_values; p++){
 					cout << clusters[i].getPoint(j).getValue(p) << " ";
-
+					output << clusters[i].getPoint(j).getValue(p) << " "; //xu ly doc file
+				}
 				cout << endl;
+				output << endl;
 			}
 
 			cout << "Cluster values: ";
-
-			for(int j = 0; j < total_values; j++)
-				cout << clusters[i].getCentralValue(j) << " ";
-
-			cout << "\n\n";
+			output << "Cluster values: ";
+			for(int j = 0; j < total_values; j++){
+					cout << clusters[i].getCentralValue(j) << " ";
+					output << clusters[i].getCentralValue(j) << " ";//xu ly doc file
+			}
+				output<< endl << endl;
+				cout << "\n\n";
 		}
+        output.close(); // dong file output	
 	}
+		
 };
 
 int main(int argc, char *argv[])
 {
 	srand (time(0));
-
-
-	int  K, max_iterations, total_points,total_values;
-	cin>> max_iterations;
-	//	Mo file 
+	int  K, max_iterations,total_values;
+	int total_points = 0;
+	cin >> K >> max_iterations;
+	// lay du lieu tu trong file
+    int pointId = 1;
+	vector<Point> points;
+	string line;
+	string point_name;
+	//	Mo file input.txt
     ifstream infile("sobar-72.csv");
+
     if (!infile.is_open())
     {
         cout << "Error: Failed to open file." << endl;
         return 1;
     }
     
- 	// Lay du lieu tu file
-    int pointId = 1;
-	vector<Point> points;
-	string line;
- 	while (getline(infile, line)) //Doc den cuoi file
+ 	while (getline(infile, line)) //doc den het file
     {
     	// xu ly lay gia tri tung dong trong file txt
 		vector<double> values;
@@ -375,11 +412,12 @@ int main(int argc, char *argv[])
 			total_points+=1; // dem so dataset trong file truyen vao
 			
     }
-	for(int i = 0; i < 10 ; i++){
-		for(int j = 1; j < 10; j++ ){
-			KMeans kmeans(j , total_points, total_values, max_iterations);	
-			kmeans.run(points);	
-		}
+	cout<< total_points<< endl;
+	for(int i = 0; i< 5 ; i++){
+		KMeans kmeans(K, total_points, total_values, max_iterations);
+		kmeans.run(points);
 	}
+	
+
 	return 0;
 }
