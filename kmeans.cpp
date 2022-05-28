@@ -5,6 +5,8 @@
 #include <time.h>
 #include <fstream>
 using namespace std;
+double minSSE = 1000000000000.0;
+int idMinSSE = 0;
 class Point
 {
 private:
@@ -155,13 +157,13 @@ public:
 	}
 	
 };
+vector<KCluster> kClusters;
 class KMeans
 {
 private:
 	int K; // so luong cum
 	int total_values, total_points, max_iterations;
 	vector<Cluster> clusters;
-	double sse;
 	// Tra ve ID cua cum gan voi diem dang xet nhat
 	int getIDNearestCenter(Point point)
 	{
@@ -257,10 +259,6 @@ public:
 		}
 
 		int iter = 0;
-		vector<KCluster> kClusters;
-		double minSSE = 1000000000000.0;
-		double minSSE1 = 1000000000000.0;
-
 		while(true)
 		{
 			KCluster kCluster(K,iter,clusters,0);
@@ -321,6 +319,14 @@ public:
 					}
 					
 				}
+				kCluster.setSSE(sumFinal);
+				kClusters.push_back(kCluster);
+				if(sumFinal < minSSE ){
+					minSSE = sumFinal;
+					idMinSSE = kClusters.size() - 1;
+				}
+		
+				cout<<"_____Check vector size: "<<kClusters.size()<<endl;
 				cout<<"Caculate SSE Final: "<<sumFinal<<endl;
 				break;
 			}
@@ -414,10 +420,40 @@ int main(int argc, char *argv[])
     }
 	cout<< total_points<< endl;
 	for(int i = 0; i< 5 ; i++){
+		cout<<"______BEGIN_____"<<endl;
+		cout<<i<<"time"<<endl;
 		KMeans kmeans(K, total_points, total_values, max_iterations);
 		kmeans.run(points);
+		//<<kClusters[i].getId()<<" Has SSE: "<<kClusters[i].getSSE()<<endl;
 	}
-	
+	cout<<" MIN SSE : "<<minSSE<<" with id : "<<idMinSSE<<endl;	
+	cout<<"Cluster of MINSSE is "<<kClusters[idMinSSE].getId()<<endl;
+	for(int i = 0 ; i < K ; i ++ ){
+		int finalLength = kClusters[idMinSSE].getCluster(i).getTotalPoints();
+			cout << "Cluster " << kClusters[idMinSSE].getCluster(i).getID() + 1 << endl;
+			//output << "Cluster " << kClusters[idMinSSE].getCluster(i).getID() + 1 << endl; //xu ly doc file
+			for(int j = 0; j < finalLength; j++)
+			{
+				cout << "Point " << kClusters[idMinSSE].getCluster(i).getPoint(j).getID() + 1 << ": ";
+				//output << "Point " << kClusters[idMinSSE].getCluster(i).getPoint(j).getID() + 1 << ": ";
+				for(int p = 0; p < total_values; p++){
+					cout << kClusters[idMinSSE].getCluster(i).getPoint(j).getValue(p) << " ";
+					//output << clusters[i].getPoint(j).getValue(p) << " "; //xu ly doc file
+				}
+				cout << endl;
+				//output << endl;
+			}
 
+			cout << "Cluster values: ";
+			//output << "Cluster values: ";
+			for(int j = 0; j < total_values; j++){
+					cout << kClusters[idMinSSE].getCluster(i).getCentralValue(j) << " ";
+					//output << kClusters[idMinSSE].getCluster(i).getCentralValue(j) << " ";//xu ly doc file
+			}
+				//output<< endl << endl;
+				cout << "\n\n";
+		
+	}
+	cout<<"______END_____";
 	return 0;
 }
